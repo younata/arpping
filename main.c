@@ -16,6 +16,7 @@ void callback(u_char *args, const struct pcap_pkthdr *header, const u_char *pack
 int usage(void);
 void sendPackets(int sockfd, char *ourMacAddress, int ourIPAddr, int targetIP);
 char *getMacAddress(char *dev);
+int getIPAddress(char *dev);
 
 int main(int argc, char *argv[])
 {
@@ -25,6 +26,7 @@ int main(int argc, char *argv[])
     bpf_u_int32 mask;
     bpf_u_int32 net; // no need to worry about ipv6 compatibility.
                      // ipv6 doesn't use arp!
+    // unfortunately, we need to do other hacks to get this info.
     int eger, target, sockfd, sendPacketNo = 1, timeout = 200; // send 1 packet, 200 ms timeout.
     while ((eger = getopt(argc, argv, "c:d:t:")) != -1) {
         switch (eger) {
@@ -45,7 +47,7 @@ int main(int argc, char *argv[])
     argc -= optind;
     argv += optind;
 
-    //inet_pton(AF_INET, argv[0], (void *)&target);
+    inet_pton(AF_INET, argv[0], (void *)&target);
 
     if (dev == NULL)
         if ((dev = pcap_lookupdev(errbuf)) == NULL) {
@@ -56,8 +58,6 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Could not get netmask for device %s. Error: %s\n", dev, errbuf);
         return 3;
     }
-    printf("net: %08x mask: %08x\n", net, mask);
-    return 0;
     if ((handle = pcap_open_live(dev, BUFSIZ, -1, timeout * sendPacketNo, errbuf)) == NULL) {
         fprintf(stderr, "Couldn't open device %s. Error: %s\n", dev, errbuf);
         return 4;
@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
     // this is all we need from the pcap_t in order to send packets.
 
     for (eger = 0; eger < sendPacketNo; eger++) {
-        sendPackets(sockfd, getMacAddress(dev), net, target);
+        sendPackets(sockfd, getMacAddress(dev), getIPAddress(dev), target);
         int count = pcap_dispatch(handle, -1, callback, NULL);
         if (count == -1) {
             fprintf(stderr, "Error reading packets.\n");
@@ -83,6 +83,36 @@ int main(int argc, char *argv[])
     }
     pcap_close(handle);
     return 0;
+}
+
+char *getMacAddress(char *dev)
+{
+    return "ffffffff";
+}
+
+int getIPAddress(char *dev)
+{
+    pcap_if_t *alldevs, *device;
+    char errbuf[PCAP_ERRBUF_SIZE];
+
+    if (pcap_findalldevs(&alldevsp, errbuf)) {
+        fprintf(stderr, "Error getting device names, %s\n", errbuf);
+        return NULL;
+    }
+
+    int ret;
+    device = alldevsp;
+    pcap_addr_t list;
+    while (device != NULL) {
+        if (strncmp(device->name, dev, strlen(dev)) == 0) {
+            // found the device we're looking for.
+            list = device->addresses[0];
+            ret = (int)list.addr;
+            break;
+        }
+        device = device->next;
+    }
+    return ret;
 }
 
 int usage(void)

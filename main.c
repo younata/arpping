@@ -11,12 +11,42 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <sys/ioctl.h>
+
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <sys/sockio.h>
+#include <net/if.h>
+#include <errno.h>
+#include <net/if_dl.h>
+
+#include "send.h" // functions for sending arp packets.
+
+// structs and typedefs
+
+typedef struct ethhead {
+    char dest[6];
+    char source[6];
+    char protocol[2];
+} ether;
+
+typedef struct arppacket {
+    char hardwareType[2]; // always going to be 0x0001
+    char protocalType[2]; // always going to be 0x0800
+    char six; // hardware address length. Always going to be six
+    char four; // ipv4 address length. Always going to be four.
+    char oper[2]; // either 1 or 2.
+    char sha[6];
+    char spa[4];
+    char tha[6];
+    char tpa[4];
+} arp;
+
+// functions not main.
 
 void callback(u_char *args, const struct pcap_pkthdr *header, const u_char *packet);
 int usage(void);
-void sendPackets(int sockfd, char *ourMacAddress, int ourIPAddr, int targetIP);
-char *getMacAddress(char *dev);
-int getIPAddress(char *dev);
 
 int main(int argc, char *argv[])
 {
@@ -75,8 +105,8 @@ int main(int argc, char *argv[])
     // this is all we need from the pcap_t in order to send packets.
 
     for (eger = 0; eger < sendPacketNo; eger++) {
-        sendPackets(sockfd, getMacAddress(dev), getIPAddress(dev), target);
-        int count = pcap_dispatch(handle, -1, callback, NULL);
+        sendPackets(sockfd, getAddresses(dev), target);
+        int count = pcap_dispatch(handle, -1, callback, &target);
         if (count == -1) {
             fprintf(stderr, "Error reading packets.\n");
         }
@@ -85,34 +115,19 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-char *getMacAddress(char *dev)
+void callback(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 {
-    return "ffffffff";
-}
-
-int getIPAddress(char *dev)
-{
-    pcap_if_t *alldevs, *device;
-    char errbuf[PCAP_ERRBUF_SIZE];
-
-    if (pcap_findalldevs(&alldevsp, errbuf)) {
-        fprintf(stderr, "Error getting device names, %s\n", errbuf);
-        return NULL;
+    /*
+    int ip = (int)*args; // args is just a pointer to an int.
+    ether *eth = calloc(1, sizeof(ether));
+    memcpy(eth, packet, 14);
+    memcpy(arpPacket, (packet+14), 26);
+    */
+    int i;
+    for (i = 0; i < 40; i++) {
+        printf("%02x", packet[i]);
     }
-
-    int ret;
-    device = alldevsp;
-    pcap_addr_t list;
-    while (device != NULL) {
-        if (strncmp(device->name, dev, strlen(dev)) == 0) {
-            // found the device we're looking for.
-            list = device->addresses[0];
-            ret = (int)list.addr;
-            break;
-        }
-        device = device->next;
-    }
-    return ret;
+    printf("\n");
 }
 
 int usage(void)

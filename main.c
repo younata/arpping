@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 
     for (eger = 0; eger < sendPacketNo; eger++) {
         sendPackets(sockfd, getAddresses(dev), target);
-        int count = pcap_dispatch(handle, -1, callback, &target);
+        int count = pcap_dispatch(handle, -1, callback, (unsigned char *)&target);
         if (count == -1) {
             fprintf(stderr, "Error reading packets.\n");
         }

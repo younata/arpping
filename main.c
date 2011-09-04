@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
                      // ipv6 doesn't use arp!
     // unfortunately, we need to do other hacks to get this info.
     int eger, target, sockfd, sendPacketNo = 1, timeout = 200; // send 1 packet, 200 ms timeout.
-    while ((eger = getopt(argc, argv, "c:d:t:")) != -1) {
+    while ((eger = getopt(argc, argv, "c:d:ht:")) != -1) {
         switch (eger) {
             case 'c':
                 sendPacketNo = (int)strtol(optarg, NULL, 10);
@@ -69,6 +69,7 @@ int main(int argc, char *argv[])
             case 't':
                 timeout = (int)strtol(optarg, NULL, 10);
                 break;
+            case 'h':
             case '?':
             default:
                 return usage();
@@ -76,6 +77,10 @@ int main(int argc, char *argv[])
     }
     argc -= optind;
     argv += optind;
+
+    if (argc == 0) {
+        return usage();
+    }
 
     inet_pton(AF_INET, argv[0], (void *)&target);
 

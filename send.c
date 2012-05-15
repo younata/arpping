@@ -27,7 +27,7 @@ void sendPackets(int sockfd, addresses *ourAddresses, int targetIP)
     memcpy(sha, ourAddresses->mac, 6);
     memcpy(spa, ourAddresses->ip, 4);
     memcpy(tpa, &targetNetwork, 4);
-    char *packet = calloc(1, 40);
+    char *packet = (char *)calloc(1, 40);
     assemblePacket(packet, sha, spa, tha, tpa);
     write(sockfd, packet, 40);
     sync();
@@ -46,7 +46,7 @@ addresses *getAddresses(char *dev)
 
     int ip;
     struct sockaddr_dl *link;
-    addresses *ret = calloc(1, sizeof(addresses));
+    addresses *ret = (addresses *)calloc(1, sizeof(addresses));
     device = alldevs;
     pcap_addr_t list, *a;
     while (device != NULL) {

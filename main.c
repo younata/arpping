@@ -46,7 +46,7 @@ typedef struct arppacket {
 // functions not main.
 
 void callback(u_char *args, const struct pcap_pkthdr *header, const u_char *packet);
-int usage(void);
+int usage(char *programName);
 
 int main(int argc, char *argv[])
 {
@@ -72,14 +72,14 @@ int main(int argc, char *argv[])
             case 'h':
             case '?':
             default:
-                return usage();
+                return usage(argv[0]);
         }
     }
     argc -= optind;
     argv += optind;
 
     if (argc == 0) {
-        return usage();
+        return usage(argv[0]);
     }
 
     inet_pton(AF_INET, argv[0], (void *)&target);
@@ -135,8 +135,8 @@ void callback(u_char *args, const struct pcap_pkthdr *header, const u_char *pack
     printf("\n");
 }
 
-int usage(void)
+int usage(char *programName)
 {
-    printf("Usage: Write me.\n");
+    printf("Usage: %s -c packet_count -d device -t timeout target\nPacket_count is number of packets to send out.\ndevice is the device to use (for example, eth0).\ntimeout is time to wait before considering host to be down.\nTarget is an ipv4 address (e.g. 10.0.0.3).\n", programName);
     return -1;
 }

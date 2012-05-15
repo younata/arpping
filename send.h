@@ -3,11 +3,10 @@
 
 // structs and typedefs
 
-struct addresses_s {
+typedef struct STaddresses {
     unsigned char ip[4];
     unsigned char mac[6];
-} addresses_s;
-typedef struct addresses_s addresses;
+} addresses;
 
 // functions
 

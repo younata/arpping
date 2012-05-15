@@ -77,6 +77,7 @@ addresses *getAddresses(char *dev)
 
 void assemblePacket(char *packet, char *sha, char *spa, char *tha, char *tpa)
 {
+    // hey, this ain't working.
     memcpy(packet, tha, 6);
     memcpy((packet+6), tha, 6);
     packet[12] = 0x00;
@@ -91,4 +92,9 @@ void assemblePacket(char *packet, char *sha, char *spa, char *tha, char *tpa)
     memcpy((packet+26), spa, 4);
     memcpy((packet+30), tha, 6);
     memcpy((packet+36), tpa, 4);
+    fprintf(stderr, "DEBUG: packet is:\n\t");
+    for (int i = 0; i < 42; i++) {
+        fprintf(stderr, "%02x:", packet[i]);
+    }
+    fprintf(stderr, "\n");
 }

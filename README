@@ -1,0 +1,6 @@
+Arp ping utility.
+
+Check the commit log for the changelog.
+
+Usage: arpping -d <interface> -c <count> <target ipv4 address>
+Defaults to 1 count, and whatever pcap thinks is the default interface.

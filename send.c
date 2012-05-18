@@ -12,7 +12,10 @@
 #include <net/if_dl.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <ifaddrs.h>
 #include <errno.h>
+
+#include <assert.h>
 
 void assemblePacket(unsigned char *packet, unsigned char *sha, unsigned char *spa, unsigned char *tha, unsigned char *tpa);
 addresses *getAddresses(char *dev);
@@ -22,22 +25,54 @@ void sendPackets(int sockfd, addresses *ourAddresses, int targetIP)
     // target is in host byte order.
     // We need to convert it to network byte order.
     unsigned char sha[6], spa[4], tha[6], tpa[4];
-    int targetNetwork = htonl(targetIP);
+    int targetNetwork = targetIP;
     for (int i = 0; i < 6; i++) {
         tha[i] = 0xff;
         sha[i] = ourAddresses->mac[i];
     }
     for (int i = 0; i < 4; i++) {
         spa[i] = ourAddresses->ip[i];
+        tpa[i] = (targetNetwork >> (i*8)) & 0xFF;
     }
     //memcpy(sha, ourAddresses->mac, 6);
     //memcpy(spa, ourAddresses->ip, 4);
-    memcpy(tpa, &targetNetwork, 4);
-    unsigned char *packet = (unsigned char *)calloc(1, 40);
+    unsigned char *packet = (unsigned char *)malloc(42);
     assemblePacket(packet, sha, spa, tha, tpa);
-    write(sockfd, packet, 40);
+    if (write(sockfd, packet, 42) == -1) {
+        fprintf(stderr, "Error writing to socket: errno: %d, %s\n", errno, strerror(errno));
+        assert(0 == 1);
+    }
     sync();
     free(packet);
+}
+
+int getIPAddress(char *dev)
+{
+    unsigned int ret;
+    struct ifaddrs *interfaces = NULL;
+    struct ifaddrs *temp_addr = NULL;
+    int success = 0;
+    // retrieve the current interfaces - returns 0 on success
+    success = getifaddrs(&interfaces);
+    if (success == 0) {
+        // Loop through linked list of interfaces
+        temp_addr = interfaces;
+        while(temp_addr != NULL) {
+            if(temp_addr->ifa_addr->sa_family == AF_INET) {
+                if (strncmp(temp_addr->ifa_name, dev, strlen(temp_addr->ifa_name)) == 0) {
+                    char *address = inet_ntoa(((struct sockaddr_in *)temp_addr->ifa_addr)->sin_addr);
+                    if (inet_pton(AF_INET, address, (void *)&ret) != 1) {
+                        fprintf(stderr, "ERROR GETTING OUR OWN IP ADDRESS. ABORTING.\n");
+                        assert(1 == 0);
+                    }
+                }
+            }
+            temp_addr = temp_addr->ifa_next;
+        }
+    }
+    // Free memory
+    freeifaddrs(interfaces);
+    return ret;
 }
 
 addresses *getAddresses(char *dev)
@@ -75,9 +110,11 @@ addresses *getAddresses(char *dev)
                         //sprintf((char *)ret->mac, "%02x%02x%02x%02x%02x%02x",(unsigned char)mac[1], (unsigned char)mac[2], (unsigned char)mac[3], (unsigned char)mac[4], (unsigned char)mac[5], (unsigned char)mac[6]);
                     }
                     list = a[0];
+                    /*
                     ip = htonl((int)list.addr);
                     for (int i = 0; i < 4; i++)
                         ret->ip[i] = (ip >> i) & 0xFF;
+                    */
                     break;
                 }
             }
@@ -85,39 +122,46 @@ addresses *getAddresses(char *dev)
         }
         device = device->next;
     }
+    int ipAddress = getIPAddress(dev);
+    for (int i = 0; i < 4; i++) {
+        ret->ip[i] = (ipAddress >> (i*8)) & 0xFF;
+    }
     return ret;
 }
 
 void assemblePacket(unsigned char *packet, unsigned char *sha, unsigned char *spa, unsigned char *tha, unsigned char *tpa)
 {
     // hey, this ain't working.
-    memcpy(packet, tha, 6);
+    memcpy((packet), tha, 6);
     memcpy((packet+6), tha, 6);
-    packet[12] = 0x00;
-    packet[13] = 0x01; // ethernet layer
-    packet[14] = 0x08;
-    packet[15] = 0x00; // arp protocol
-    packet[16] = 0x06; // mac length
-    packet[17] = 0x04; // ipv4 length
-    packet[18] = 0x00;
-    packet[19] = 0x01; // arp request
-    memcpy((packet+20), sha, 6);
-    memcpy((packet+26), spa, 4);
-    memcpy((packet+30), tha, 6);
-    memcpy((packet+36), tpa, 4);
+    // set stuff to 12 and 13...
+    packet[12] = 0x08;
+    packet[13] = 0x00;
+    packet[14] = 0x00;
+    packet[15] = 0x01; // ethernet layer
+    packet[16] = 0x08;
+    packet[17] = 0x00; // arp protocol
+    packet[18] = 0x06; // mac length
+    packet[19] = 0x04; // ipv4 length
+    packet[20] = 0x00;
+    packet[21] = 0x01; // arp request
+    memcpy((packet+22), sha, 6);
+    memcpy((packet+28), spa, 4);
+    memcpy((packet+32), tha, 6);
+    memcpy((packet+38), tpa, 4);
     fprintf(stderr, "DEBUG: packet is:\n\t");
-    for (int i = 0; i < 40; i++) {
-        if (i == 0 || i == 6)
+    for (int i = 0; i < 42; i++) {
+        if (i == 0 || i == 32)
             fprintf(stderr, " tha:");
-        if (i == 12)
-            fprintf(stderr, " arp:");
-        if (i == 20)
+        if (i == 6 || i == 22)
             fprintf(stderr, " sha:");
-        if (i == 26)
+        if (i == 12)
+            fprintf(stderr, " eth:");
+        if (i == 14)
+            fprintf(stderr, " arp:");
+        if (i == 28)
             fprintf(stderr, " spa:");
-        if (i == 30)
-            fprintf(stderr, " tha:");
-        if (i == 36)
+        if (i == 38)
             fprintf(stderr, " tpa:");
         fprintf(stderr, "%02x:", packet[i]);
     }

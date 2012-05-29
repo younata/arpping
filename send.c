@@ -38,7 +38,7 @@ void sendPackets(int sockfd, addresses *ourAddresses, int targetIP)
     //memcpy(spa, ourAddresses->ip, 4);
     unsigned char *packet = (unsigned char *)malloc(42);
     assemblePacket(packet, sha, spa, tha, tpa);
-    if (write(sockfd, packet, 42) == -1) {
+    if (write(sockfd, packet, 42) != 42) {
         fprintf(stderr, "Error writing to socket: errno: %d, %s\n", errno, strerror(errno));
         assert(0 == 1);
     }

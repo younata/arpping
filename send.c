@@ -44,6 +44,7 @@ void sendPackets(int sockfd, addresses *ourAddresses, int targetIP)
     }
     sync();
     free(packet);
+    usleep(2000*1000);
 }
 
 int getIPAddress(char *dev)
@@ -133,10 +134,10 @@ void assemblePacket(unsigned char *packet, unsigned char *sha, unsigned char *sp
 {
     // hey, this ain't working.
     memcpy((packet), tha, 6);
-    memcpy((packet+6), tha, 6);
+    memcpy((packet+6), sha, 6);
     // set stuff to 12 and 13...
     packet[12] = 0x08;
-    packet[13] = 0x00;
+    packet[13] = 0x06;
     packet[14] = 0x00;
     packet[15] = 0x01; // ethernet layer
     packet[16] = 0x08;

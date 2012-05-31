@@ -1,3 +1,3 @@
 CC=CLANG
 all:
-	CC -lpcap -g send.c main.c -o arpping
+	CC -std=c99 -lpcap -g send.c main.c -o arpping

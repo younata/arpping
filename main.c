@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
     bpf_u_int32 net; // no need to worry about ipv6 compatibility.
                      // ipv6 doesn't use arp!
     // unfortunately, we need to do other hacks to get this info.
-    int eger, target, sockfd, sendPacketNo = 1, timeout = 200; // send 1 packet, 200 ms timeout.
+    int eger, target, sockfd, sendPacketNo = 1, timeout = 200*100; // send 1 packet, 200 ms timeout.
     while ((eger = getopt(argc, argv, "c:d:ht:")) != -1) {
         switch (eger) {
             case 'c':
@@ -129,7 +129,7 @@ void callback(u_char *args, const struct pcap_pkthdr *header, const u_char *pack
     memcpy(arpPacket, (packet+14), 26);
     */
     int i;
-    for (i = 0; i < 40; i++) {
+    for (i = 0; i < 42; i++) {
         printf("%02x", packet[i]);
     }
     printf("\n");
@@ -137,6 +137,6 @@ void callback(u_char *args, const struct pcap_pkthdr *header, const u_char *pack
 
 int usage(char *programName)
 {
-    printf("Usage: %s -c packet_count -d device -t timeout target\nPacket_count is number of packets to send out.\ndevice is the device to use (for example, eth0).\ntimeout is time to wait before considering host to be down.\nTarget is an ipv4 address (e.g. 10.0.0.3).\n", programName);
+    printf("Usage: %s -c packet_count -d device -t timeout target\nPacket_count is number of packets to send out.\ndevice is the device to use (for example, eth0).\ntimeout is time to wait before considering host to be down (Default 500 milliseconds).\nTarget is an ipv4 address (e.g. 10.0.0.3).\n", programName);
     return -1;
 }

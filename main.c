@@ -26,22 +26,25 @@
 // structs and typedefs
 
 typedef struct ethhead {
-    char dest[6];
-    char source[6];
-    char protocol[2];
+    unsigned char dest[6];
+    unsigned char source[6];
+    unsigned char protocol[2];
 } ether;
 
 typedef struct arppacket {
-    char hardwareType[2]; // always going to be 0x0001
-    char protocalType[2]; // always going to be 0x0800
-    char six; // hardware address length. Always going to be six
-    char four; // ipv4 address length. Always going to be four.
-    char oper[2]; // either 1 or 2.
-    char sha[6];
-    char spa[4];
-    char tha[6];
-    char tpa[4];
+    unsigned char hardwareType[2]; // always going to be 0x0001
+    unsigned char protocalType[2]; // always going to be 0x0800
+    unsigned char six; // hardware address length. Always going to be six
+    unsigned char four; // ipv4 address length. Always going to be four.
+    unsigned char oper[2]; // either 1 or 2.
+    unsigned char sha[6];
+    unsigned char spa[4];
+    unsigned char tha[6];
+    unsigned char tpa[4];
 } arp;
+
+// the one global variable...
+int count = 0;
 
 // functions not main.
 
@@ -57,7 +60,7 @@ int main(int argc, char *argv[])
     bpf_u_int32 net; // no need to worry about ipv6 compatibility.
                      // ipv6 doesn't use arp!
     // unfortunately, we need to do other hacks to get this info.
-    int eger, target, sockfd, sendPacketNo = 1, timeout = 200*100; // send 1 packet, 200 ms timeout.
+    int eger, target, sockfd, sendPacketNo = 1, timeout = 200; // send 1 packet, 200 ms timeout.
     while ((eger = getopt(argc, argv, "c:d:ht:")) != -1) {
         switch (eger) {
             case 'c':
@@ -109,30 +112,57 @@ int main(int argc, char *argv[])
     memcpy(&sockfd, handle, sizeof(int));
     // this is all we need from the pcap_t in order to send packets.
 
+    printf("Pinging ");
+    for (int i = 0; i < 4; i++) {
+        printf("%d", (target >> (i * 8)) & 0xFF);
+        if (i < 3)
+            printf(".");
+    }
+    printf(" from localhost over ARP.\n");
+
     for (eger = 0; eger < sendPacketNo; eger++) {
         sendPackets(sockfd, getAddresses(dev), target);
-        int count = pcap_dispatch(handle, -1, callback, (unsigned char *)&target);
-        if (count == -1) {
+        int cnt = pcap_dispatch(handle, -1, callback, (unsigned char *)&target);
+        if (cnt == -1) {
             fprintf(stderr, "Error reading packets.\n");
         }
     }
     pcap_close(handle);
+    printf("Sent %d probes\nRecieved %d responses.\n", sendPacketNo, count);
     return 0;
 }
 
 void callback(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 {
-    /*
-    int ip = (int)*args; // args is just a pointer to an int.
     ether *eth = calloc(1, sizeof(ether));
     memcpy(eth, packet, 14);
-    memcpy(arpPacket, (packet+14), 26);
-    */
-    int i;
-    for (i = 0; i < 42; i++) {
-        printf("%02x", packet[i]);
+    arp *arpPacket = calloc(1, sizeof(arp));
+    memcpy(arpPacket, (packet+14), 28);
+
+    if (arpPacket->oper[1] == 0x02) { // reply
+        for (int i = 0; i < 4; i++) {
+            if (arpPacket->spa[i] != args[i]) {
+                free(eth);
+                free(arpPacket);
+                return;
+            }
+        }
+        printf("Reply from ");
+        for (int i = 0; i < 4; i++) {
+            printf("%d", arpPacket->spa[i]);
+            if (i < 3)
+                printf(".");
+        }
+        printf(" [");
+        for (int i = 0; i < 6; i++) {
+            printf("%02x", arpPacket->sha[i]);
+            if (i < 5)
+                printf(":");
+        }
+        printf("]\n");
+        count++;
     }
-    printf("\n");
+
 }
 
 int usage(char *programName)

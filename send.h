@@ -1,6 +1,8 @@
 #ifndef SENDARP_
 #define SENDARP_
 
+#define DEBUG 0
+
 // structs and typedefs
 
 typedef struct STaddresses {

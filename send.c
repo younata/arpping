@@ -44,7 +44,6 @@ void sendPackets(int sockfd, addresses *ourAddresses, int targetIP)
     }
     sync();
     free(packet);
-    usleep(2000*1000);
 }
 
 int getIPAddress(char *dev)

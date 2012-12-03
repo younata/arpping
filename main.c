@@ -54,6 +54,9 @@ int usage(char *programName);
 int main(int argc, char *argv[])
 {
     char *dev = NULL, errbuf[PCAP_ERRBUF_SIZE];
+
+    //dispatch_queue_t queue = dispatch_queue_create("arpping", 0);
+
     pcap_t *handle;
     struct bpf_program fp; // filter.
     bpf_u_int32 mask;
@@ -127,6 +130,7 @@ int main(int argc, char *argv[])
             fprintf(stderr, "Error reading packets.\n");
         }
     }
+    usleep(1000*timeout);
     pcap_close(handle);
     printf("Sent %d probes\nRecieved %d responses.\n", sendPacketNo, count);
     return 0;
